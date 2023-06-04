@@ -129,7 +129,7 @@ if ($reg_hiberbootenabled -eq "1") {$reg_hiberbootenabled_desc="Fast Boot is ena
 if ($reg_toastenabled -eq "0") {$reg_toastenabled_desc="System notifications are disabled for current user"} else {$reg_toastenabled_desc="System notifications are enabled for current user"} 
 ####### Windows settings
 
-$pc = Get-WmiObject win32_operatingsystem | select csname, @{LABEL=’LastBootUpTime’;EXPRESSION={$_.ConverttoDateTime($_.lastbootuptime)}}
+$pc = Get-WmiObject win32_operatingsystem | select csname, @{LABEL="LastBootUpTime";EXPRESSION={$_.ConverttoDateTime($_.lastbootuptime)}}
 $days_fromstartup = ((Get-Date)-($pc.LastBootUpTime)).TotalDays
 ###
 
