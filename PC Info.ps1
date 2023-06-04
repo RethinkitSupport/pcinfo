@@ -80,12 +80,14 @@ Function RegGet ($keymain, $keypath, $keyname)
     }
 
 ### Main function header - Put RethinkitFunctions.psm1 in same folder as script
-$scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
+$scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName}
+if ($scriptFullname) {
 $scriptXML      = $scriptFullname.Substring(0, $scriptFullname.LastIndexOf('.'))+ ".xml"  ### replace .ps1 with .xml
 $scriptDir      = Split-Path -Path $scriptFullname -Parent
 $scriptName     = Split-Path -Path $scriptFullname -Leaf
 $scriptBase     = $scriptName.Substring(0, $scriptName.LastIndexOf('.'))
 $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
+}
 #################################################
 $userisadmin = if (IsAdmin) {"YES"} else {"NO"}
 $dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
