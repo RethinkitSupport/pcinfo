@@ -179,4 +179,4 @@ Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) Use
 $infoObject
 Write-Host "-----------------------------------------------------------------------------"
 #################################################
-Read-Host -Prompt “Press Enter to exit”
+Read-Host -Prompt "Press Enter to exit"
