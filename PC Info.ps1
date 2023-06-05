@@ -88,6 +88,9 @@ $scriptName     = Split-Path -Path $scriptFullname -Leaf
 $scriptBase     = $scriptName.Substring(0, $scriptName.LastIndexOf('.'))
 $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
 }
+
+Write-Host "PC Info.ps1" -NoNewline -ForegroundColor Yellow
+Write-Host " (Gathering info)..."
 #################################################
 $userisadmin = if (IsAdmin) {"YES"} else {"NO"}
 $dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
@@ -143,8 +146,6 @@ if ($localadmins -contains "$localuser" )
 else 
     {$IsLocalAdmin ="No"} 
 ####    
-
-
 $objProps = [ordered]@{
     ComputerSN    = $computerInfo.BiosSeralNumber
     OSInfo        = "$($computerInfo.OsName) ($($computerInfo.OSDisplayVersion)) v$($computerInfo.OsVersion) $($computerInfo.OsArchitecture)"
@@ -180,5 +181,11 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
 $infoObject
 Write-Host "-----------------------------------------------------------------------------"
+### Drop a report in the downloads folder
+$folder_downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
+$date = get-date -format "yyyy-MM-dd_HH-mm-ss"
+$file = "$($folder_downloads)\PC Info $($date).txt"
+$infoObject | Out-File $file
+Invoke-Item $file
 #################################################
 Read-Host -Prompt "Press Enter to exit"
