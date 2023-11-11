@@ -351,19 +351,19 @@ $displayinfo = "$($dispctrls -join ", "):$($dispmons -join ", "):$($dispmonres -
 
 ####    
 $objProps = [ordered]@{
+    Computername  = $computerInfo.CsName
     ComputerSN    = $computerInfo.BiosSeralNumber
     OSInfo        = "$($computerInfo.OsName) ($($computerInfo.OSDisplayVersion)) v$($computerInfo.OsVersion) $($computerInfo.OsArchitecture)"
     Model         = "$($computerInfo.CsManufacturer) $($computerInfo.CsModel)"
     CPU           = $computerinfo.CsProcessors[0].Name + " (" + $computerinfo.CsProcessors[0].NumberOfCores + "C)"
     Memory        = ($computerInfo.CsTotalPhysicalMemory / 1GB).ToString("#.# GB")
     Disks         = $Disks -join ", "
-    Computername  = $computerInfo.CsName
     Display       = $displayinfo
     Networks      = $networks -join ", "
     PublicIP      = $PublicIP_Info.ip
     PublicIP_Loc  = "$($PublicIP_Info.city) $($PublicIP_Info.region) $($PublicIP_Info.postal) $($PublicIP_Info.country) [$($PublicIP_Info.org)]"
     TeamviewerID  = $TeamviewerID
-    Domain        = $env:userdomain 
+    Domain        = $env:userdomain
     User          = $localuser
     LocalAdmins   = $localadmins -join ", "
     IsLocalAdmin  = $IsLocalAdmin
@@ -398,4 +398,4 @@ $out_lines | Out-File $file
 # open file
 Invoke-Item $file
 #################################################
-Read-Host -Prompt "Press Enter to exit"
+Read-Host -Prompt "Report saved to Downloads folder. Press Enter to exit"
