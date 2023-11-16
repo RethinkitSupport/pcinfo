@@ -149,14 +149,12 @@ namespace Resolution
 "@
 Add-Type $pinvokeCode
 #endregion .NET
-
 Function GetDisplayMonitorResolutions {
     $res = [Resolution.Displays]::GetResolutions()
     $res_str = @()
     $res_str +=  $res | ForEach-Object {if ($_) {([string]$_).Replace(",","x")}}
     $res_str
 }
-
 Function GetDisplayMonitors{
     $MonsObj = Get-WmiObject WmiMonitorID -Namespace root\wmi  |  
         ForEach-Object {
@@ -170,13 +168,11 @@ Function GetDisplayMonitors{
     $strReturn += $MonsObj | ForEach-Object {"$($_.Name) [Serial: $($_.Serial)]"}
     $strReturn
 }
-
 Function GetDisplayControllers {
     $controllers = @()
     $controllers += Get-WmiObject win32_videocontroller | Select-Object -ExpandProperty caption
     $controllers
 }
-
 Function IsAdmin() 
 {
     <#
@@ -234,14 +230,13 @@ Function LocalAdmins
         $count +=1
         $locadmins+="$($user1)$($Status)"
         Write-Output "$($user1)$($Status)"
-        #### is this an AzureAD Admin that's enabled?
+        # is this an AzureAD Admin that's enabled?
         if (($domainname -eq "AzureAD") -and (-not ($locadmin_info.Enabled)))
         {
             #$azadmins += $user1
         }
-        ####
     }
-} 
+}
 Function RegGet ($keymain, $keypath, $keyname)
 {
     #########
@@ -264,16 +259,11 @@ Function RegGet ($keymain, $keypath, $keyname)
 ### Main function header - Put RethinkitFunctions.psm1 in same folder as script
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName}
 if ($scriptFullname) {
-    $scriptXML      = $scriptFullname.Substring(0, $scriptFullname.LastIndexOf('.'))+ ".xml"  ### replace .ps1 with .xml
-    $scriptDir      = Split-Path -Path $scriptFullname -Parent
     $scriptName     = Split-Path -Path $scriptFullname -Leaf
-    $scriptBase     = $scriptName.Substring(0, $scriptName.LastIndexOf('.'))
     $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
 }
-
 Write-Host "PC Info.ps1" -NoNewline -ForegroundColor Yellow
 Write-Host " (Gathering info)..."
-
 ## Read Teamviewer ID from registry
 $tvid = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "ClientID"
 If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
@@ -281,7 +271,6 @@ $tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccount
 If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
 $TeamviewerID = [string]$tvid
 if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
-
 # Networks
 $networks=@()
 $NetConnectionProfiles = Get-NetConnectionProfile | Sort-Object InterfaceIndex
@@ -296,7 +285,6 @@ ForEach ($NetConnectionProfile in $NetConnectionProfiles)
     #
     $networks += $network
 }
-
 # Disks
 $disks=@()
 $Getdisks = Get-disk | Sort-Object Number
@@ -314,10 +302,8 @@ ForEach ($Getdisk in $Getdisks)
     }
     $disks += $disk
 }
-
 # Public IP
 $PublicIP_Info = Invoke-RestMethod http://ipinfo.io/json -UseBasicParsing
-
 # Windows settings
 [string]$reg_hiberbootenabled = RegGet "HKLM" "SYSTEM\CurrentControlSet\Control\Session Manager\Power" "HiberbootEnabled"
 [string]$reg_toastenabled     = RegGet "HKCU" "SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications" "ToastEnabled"
@@ -326,33 +312,34 @@ if ($reg_toastenabled -eq "")     {$reg_toastenabled     = "(blank)"}
 ##
 if ($reg_hiberbootenabled -eq "1") {$reg_hiberbootenabled_desc="Warning: Fast Boot is enabled"} else {$reg_hiberbootenabled_desc="OK: Fast Boot is disabled (shutdown same as restart)"}
 if ($reg_toastenabled -eq "0") {$reg_toastenabled_desc="Warning: System notifications are disabled for current user"} else {$reg_toastenabled_desc="OK: System notifications are enabled for current user"} 
-
 # PC boot
 $pc = Get-WmiObject win32_operatingsystem | Select-Object CSName, @{N="LastBootUpTime";E={[System.Management.ManagementDateTimeConverter]::ToDateTime($_.LastBootUpTime)}}
 $days_fromstartup = ((Get-Date)-($pc.LastBootUpTime)).TotalDays
-
 # Local Admins
 $localuser = "$($env:userdomain)\$($env:username)" 
 $localadmins = LocalAdmins
 $IsLocalAdmin = if (IsLocalAdmin) {"YES"} else {"NO"}
 $IsAdmin      = if (IsAdmin)      {"YES"} else {"NO"}
-
 # Azure Info
 $dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
-
 # PC Info
 $computerInfo = Get-ComputerInfo
-
+if ($computerInfo.BiosSerialNumber)
+{$sn = $computerInfo.BiosSerialNumber}
+else
+{$sn = $computerInfo.BiosSeralNumber} # oddly was misspelled up to recent versions of windows
 # Display
 $dispctrls  = GetDisplayControllers
 $dispmons   = GetDisplayMonitors
 $dispmonres = GetDisplayMonitorResolutions
 $displayinfo = "$($dispctrls -join ", "):$($dispmons -join ", "):$($dispmonres -join ", ")"
-
+# winget
+Try {$wingetver = & winget -v}
+Catch {$wingetver = "(none)"}
 ####    
 $objProps = [ordered]@{
     Computername  = $computerInfo.CsName
-    ComputerSN    = $computerInfo.BiosSeralNumber
+    ComputerSN    = $sn
     OSInfo        = "$($computerInfo.OsName) ($($computerInfo.OSDisplayVersion)) v$($computerInfo.OsVersion) $($computerInfo.OsArchitecture)"
     Model         = "$($computerInfo.CsManufacturer) $($computerInfo.CsModel)"
     CPU           = $computerinfo.CsProcessors[0].Name + " (" + $computerinfo.CsProcessors[0].NumberOfCores + "C)"
@@ -364,6 +351,7 @@ $objProps = [ordered]@{
     PublicIP_Loc  = "$($PublicIP_Info.city) $($PublicIP_Info.region) $($PublicIP_Info.postal) $($PublicIP_Info.country) [$($PublicIP_Info.org)]"
     TeamviewerID  = $TeamviewerID
     Domain        = $env:userdomain
+    Winget        = $wingetver
     User          = $localuser
     LocalAdmins   = $localadmins -join ", "
     IsLocalAdmin  = $IsLocalAdmin
