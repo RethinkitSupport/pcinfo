@@ -336,6 +336,14 @@ $displayinfo = "$($dispctrls -join ", "):$($dispmons -join ", "):$($dispmonres -
 # winget
 Try {$wingetver = & winget -v}
 Catch {$wingetver = "(none)"}
+# BitLocker
+$OSDrive = $env:SystemDrive
+# $bitlocker = Get-BitLockerVolume -MountPoint $OSDrive # requires elevation
+$bitlocker = (New-Object -ComObject Shell.Application).NameSpace($OSDrive).Self.ExtendedProperty('System.Volume.BitLockerProtection')
+if ($bitlocker -eq 1) {$bitlockerstatus = "Encrypted"}
+elseif ($bitlocker -eq 3) {$bitlockerstatus = "Encryption in progress"}
+else {$bitlockerstatus = "Not encrypted"}
+$bitlockerstatus += " $($OSDrive) ($($bitlocker))"
 ####    
 $objProps = [ordered]@{
     Computername  = $computerInfo.CsName
@@ -345,6 +353,7 @@ $objProps = [ordered]@{
     CPU           = $computerinfo.CsProcessors[0].Name + " (" + $computerinfo.CsProcessors[0].NumberOfCores + "C)"
     Memory        = ($computerInfo.CsTotalPhysicalMemory / 1GB).ToString("#.# GB")
     Disks         = $Disks -join ", "
+    Bitlocker     = $bitlockerstatus
     Display       = $displayinfo
     Networks      = $networks -join ", "
     PublicIP      = $PublicIP_Info.ip
