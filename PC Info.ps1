@@ -156,16 +156,22 @@ Function GetDisplayMonitorResolutions {
     $res_str
 }
 Function GetDisplayMonitors{
-    $MonsObj = Get-WmiObject WmiMonitorID -Namespace root\wmi  |  
-        ForEach-Object {
-            [PSCustomObject]@{
-            Manufacturer   = [System.Text.Encoding]::ASCII.GetString($_.ManufacturerName).Trim(0x00)
-            Name           = [System.Text.Encoding]::ASCII.GetString($_.UserFriendlyName).Trim(0x00)
-            Serial         = [System.Text.Encoding]::ASCII.GetString($_.SerialNumberID).Trim(0x00)
-        }
-    }
     $strReturn = @()
-    $strReturn += $MonsObj | ForEach-Object {"$($_.Name) [Serial: $($_.Serial)]"}
+    try {
+        $MonsObj = Get-WmiObject WmiMonitorID -Namespace root\wmi -ErrorAction Stop  |  
+            ForEach-Object {
+                [PSCustomObject]@{
+                Manufacturer   = [System.Text.Encoding]::ASCII.GetString($_.ManufacturerName).Trim(0x00)
+                Name           = [System.Text.Encoding]::ASCII.GetString($_.UserFriendlyName).Trim(0x00)
+                Serial         = [System.Text.Encoding]::ASCII.GetString($_.SerialNumberID).Trim(0x00)
+            }
+        }
+        $strReturn += $MonsObj | ForEach-Object {"$($_.Name) [Serial: $($_.Serial)]"}
+    }
+    Catch {
+        $strReturn += "[Monitor model detection requires run as admin]"
+    }
+    
     $strReturn
 }
 Function GetDisplayControllers {
@@ -256,14 +262,12 @@ Function RegGet ($keymain, $keypath, $keyname)
         }
     $result
 }
-### Main function header - Put RethinkitFunctions.psm1 in same folder as script
-$scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName}
-if ($scriptFullname) {
-    $scriptName     = Split-Path -Path $scriptFullname -Leaf
-    $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
-}
-Write-Host "PC Info.ps1" -NoNewline -ForegroundColor Yellow
-Write-Host " (Gathering info)..."
+################################ Main Code Area
+$scriptName     = "PC Info.ps1"
+$scriptVer      = "v2023-11-20"
+################################
+Write-Host "$($scriptName) $($scriptVer)" -ForegroundColor Yellow
+Write-Host "  Gathering registry info..."
 ## Read Teamviewer ID from registry
 $tvid = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "ClientID"
 If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
@@ -271,6 +275,7 @@ $tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccount
 If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
 $TeamviewerID = [string]$tvid
 if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
+Write-Host "  Gathering network info..."
 # Networks
 $networks=@()
 $NetConnectionProfiles = Get-NetConnectionProfile | Sort-Object InterfaceIndex
@@ -285,6 +290,7 @@ ForEach ($NetConnectionProfile in $NetConnectionProfiles)
     #
     $networks += $network
 }
+Write-Host "  Gathering disk info..."
 # Disks
 $disks=@()
 $Getdisks = Get-disk | Sort-Object Number
@@ -302,8 +308,10 @@ ForEach ($Getdisk in $Getdisks)
     }
     $disks += $disk
 }
+Write-Host "  Gathering public ip info..."
 # Public IP
 $PublicIP_Info = Invoke-RestMethod http://ipinfo.io/json -UseBasicParsing
+Write-Host "  Gathering fast boot and notification info..."
 # Windows settings
 [string]$reg_hiberbootenabled = RegGet "HKLM" "SYSTEM\CurrentControlSet\Control\Session Manager\Power" "HiberbootEnabled"
 [string]$reg_toastenabled     = RegGet "HKCU" "SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications" "ToastEnabled"
@@ -312,30 +320,37 @@ if ($reg_toastenabled -eq "")     {$reg_toastenabled     = "(blank)"}
 ##
 if ($reg_hiberbootenabled -eq "1") {$reg_hiberbootenabled_desc="Warning: Fast Boot is enabled"} else {$reg_hiberbootenabled_desc="OK: Fast Boot is disabled (shutdown same as restart)"}
 if ($reg_toastenabled -eq "0") {$reg_toastenabled_desc="Warning: System notifications are disabled for current user"} else {$reg_toastenabled_desc="OK: System notifications are enabled for current user"} 
+Write-Host "  Gathering last boot info..."
 # PC boot
 $pc = Get-WmiObject win32_operatingsystem | Select-Object CSName, @{N="LastBootUpTime";E={[System.Management.ManagementDateTimeConverter]::ToDateTime($_.LastBootUpTime)}}
 $days_fromstartup = ((Get-Date)-($pc.LastBootUpTime)).TotalDays
+Write-Host "  Gathering local admin info..."
 # Local Admins
 $localuser = "$($env:userdomain)\$($env:username)" 
 $localadmins = LocalAdmins
 $IsLocalAdmin = if (IsLocalAdmin) {"YES"} else {"NO"}
 $IsAdmin      = if (IsAdmin)      {"YES"} else {"NO"}
+Write-Host "  Gathering azure ad info..."
 # Azure Info
 $dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
+Write-Host "  Gathering computer info..."
 # PC Info
 $computerInfo = Get-ComputerInfo
 if ($computerInfo.BiosSerialNumber)
 {$sn = $computerInfo.BiosSerialNumber}
 else
 {$sn = $computerInfo.BiosSeralNumber} # oddly was misspelled up to recent versions of windows
+Write-Host "  Gathering display info..."
 # Display
 $dispctrls  = GetDisplayControllers
 $dispmons   = GetDisplayMonitors
 $dispmonres = GetDisplayMonitorResolutions
 $displayinfo = "$($dispctrls -join ", "):$($dispmons -join ", "):$($dispmonres -join ", ")"
+Write-Host "  Gathering winget info..."
 # winget
 Try {$wingetver = & winget -v}
 Catch {$wingetver = "(none)"}
+Write-Host "  Gathering bitlocker info..."
 # BitLocker
 $OSDrive = $env:SystemDrive
 # $bitlocker = Get-BitLockerVolume -MountPoint $OSDrive # requires elevation
@@ -344,6 +359,7 @@ if ($bitlocker -eq 1) {$bitlockerstatus = "Encrypted"}
 elseif ($bitlocker -eq 3) {$bitlockerstatus = "Encryption in progress"}
 else {$bitlockerstatus = "Not encrypted"}
 $bitlockerstatus += " $($OSDrive) ($($bitlocker))"
+Write-Host "Done gathering info."
 ####    
 $objProps = [ordered]@{
     Computername  = $computerInfo.CsName
