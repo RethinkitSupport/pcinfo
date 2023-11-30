@@ -149,6 +149,7 @@ namespace Resolution
 "@
 Add-Type $pinvokeCode
 #endregion .NET
+#region Functions
 Function GetDisplayMonitorResolutions {
     $res = [Resolution.Displays]::GetResolutions()
     $res_str = @()
@@ -166,7 +167,7 @@ Function GetDisplayMonitors{
                 Serial         = [System.Text.Encoding]::ASCII.GetString($_.SerialNumberID).Trim(0x00)
             }
         }
-        $strReturn += $MonsObj | ForEach-Object {"$($_.Name) [Serial: $($_.Serial)]"}
+        $strReturn += $MonsObj | ForEach-Object {"$($_.Name) [Serial $($_.Serial)]"}
     }
     Catch {
         $strReturn += "[Monitor model detection requires run as admin]"
@@ -262,6 +263,7 @@ Function RegGet ($keymain, $keypath, $keyname)
         }
     $result
 }
+#endregion Functions
 ################################ Main Code Area
 $scriptName     = "PC Info.ps1"
 $scriptVer      = "v2023-11-20"
@@ -274,7 +276,7 @@ If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
 $tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccountName"
 If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
 $TeamviewerID = [string]$tvid
-if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
+If (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
 Write-Host "  Gathering network info..."
 # Networks
 $networks=@()
