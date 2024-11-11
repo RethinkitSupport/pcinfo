@@ -410,7 +410,7 @@ $date = get-date -format "yyyy-MM-dd_HH-mm-ss"
 $file = "$($folder_downloads)\PC Info $($date).txt"
 # write file
 $out_lines | Out-File $file
+#################################################
+Read-Host -Prompt "Report saved to Downloads folder. Press Enter to exit and open that file."
 # open file
 Invoke-Item $file
-#################################################
-Read-Host -Prompt "Report saved to Downloads folder. Press Enter to exit"
